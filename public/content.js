@@ -58,6 +58,31 @@ if (window.__campusApplyAgentLoaded) {
 
       console.log('🎉 [CampusApply] 自动填充完成！共填入 ' + filledCount + ' 个字段');
       sendResponse({ status: 'done', count: filledCount });
+      return;
+    }
+
+    // 把 AI 生成的小作文填入页面第一个可见的 textarea
+    if (request.type === 'FILL_TEXTAREA') {
+      console.log('🔥 [CampusApply] 收到小作文填入请求，长度:', (request.text || '').length);
+
+      const tas = Array.from(document.querySelectorAll('textarea')).filter(
+        ta => ta.offsetParent !== null || ta.getClientRects().length > 0
+      );
+
+      if (tas.length === 0) {
+        alert('⚠️ 页面上没有找到可填入的文本域(textarea)');
+        sendResponse({ status: 'no-textarea' });
+        return;
+      }
+
+      const ta = tas[0];
+      const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
+      nativeSetter.call(ta, request.text || '');
+      ta.dispatchEvent(new Event('input', { bubbles: true }));
+      ta.dispatchEvent(new Event('change', { bubbles: true }));
+      ta.style.backgroundColor = '#fff3cd';
+      console.log('🎉 [CampusApply] 小作文已填入 textarea');
+      sendResponse({ status: 'done' });
     }
   });
 }
