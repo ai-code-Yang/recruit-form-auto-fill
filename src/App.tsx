@@ -11,10 +11,14 @@ interface Profile {
   school: string;
   degree: string;
   major: string;
+  wechat: string;
+  qq: string;
+  birthday: string;
+  location: string;
 }
 
 function App() {
-  const [profile, setProfile] = useState<Profile>({ name: '', email: '', phone: '', school: '', degree: '', major: '' });
+  const [profile, setProfile] = useState<Profile>({ name: '', email: '', phone: '', school: '', degree: '', major: '', wechat: '', qq: '', birthday: '', location: '' });
   const [aiPrompt, setAiPrompt] = useState('');     // 用户输入的题目
   const [aiResult, setAiResult] = useState('');     // AI生成的结果
   const [apiKey, setApiKey] = useState('');         // DeepSeek API Key
@@ -108,6 +112,23 @@ function App() {
       <div className="form-group">
         <label>姓名：</label>
         <input type="text" value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} placeholder="例如：张三" />
+      </div>
+      {/* [新增] 更多个人信息 */}
+      <div className="form-group">
+        <label>微信：</label>
+        <input type="text" value={profile.wechat} onChange={(e) => setProfile({ ...profile, wechat: e.target.value })} placeholder="例如：wxid_123456" />
+      </div>
+      <div className="form-group">
+        <label>QQ：</label>
+        <input type="text" value={profile.qq} onChange={(e) => setProfile({ ...profile, qq: e.target.value })} placeholder="例如：10001" />
+      </div>
+      <div className="form-group">
+        <label>出生年月：</label>
+        <input type="text" value={profile.birthday} onChange={(e) => setProfile({ ...profile, birthday: e.target.value })} placeholder="例如：2002-05" />
+      </div>
+      <div className="form-group">
+        <label>居住地：</label>
+        <input type="text" value={profile.location} onChange={(e) => setProfile({ ...profile, location: e.target.value })} placeholder="例如：北京市海淀区" />
       </div>
       <div className="form-group">
         <label>邮箱：</label>

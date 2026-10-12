@@ -3,8 +3,8 @@
   "name": "CampusApply-Agent",
   "version": "1.0",
   "description": "校招网申自动填表助手",
-  "permissions": ["activeTab", "scripting", "storage", "tabs"],
-  "host_permissions": ["https://api.deepseek.com/*"],
+  "permissions": ["activeTab", "scripting", "storage","tabs"],
+  "host_permissions": ["<all_urls>","https://api.deepseek.com/*"],
   "background": {
     "service_worker": "background.js"
   },
