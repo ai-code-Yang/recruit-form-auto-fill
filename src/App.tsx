@@ -8,10 +8,13 @@ interface Profile {
   name: string;
   email: string;
   phone: string;
+  school: string;
+  degree: string;
+  major: string;
 }
 
 function App() {
-  const [profile, setProfile] = useState<Profile>({ name: '', email: '', phone: '' });
+  const [profile, setProfile] = useState<Profile>({ name: '', email: '', phone: '', school: '', degree: '', major: '' });
   const [aiPrompt, setAiPrompt] = useState('');     // 用户输入的题目
   const [aiResult, setAiResult] = useState('');     // AI生成的结果
   const [apiKey, setApiKey] = useState('');         // DeepSeek API Key
@@ -113,6 +116,18 @@ function App() {
       <div className="form-group">
         <label>手机：</label>
         <input type="text" value={profile.phone} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} placeholder="例如：13800138000" />
+      </div>
+      <div className="form-group">
+        <label>学校：</label>
+        <input type="text" value={profile.school} onChange={(e) => setProfile({ ...profile, school: e.target.value })} placeholder="例如：清华大学" />
+      </div>
+      <div className="form-group">
+        <label>学历：</label>
+        <input type="text" value={profile.degree} onChange={(e) => setProfile({ ...profile, degree: e.target.value })} placeholder="例如：本科" />
+      </div>
+      <div className="form-group">
+        <label>专业：</label>
+        <input type="text" value={profile.major} onChange={(e) => setProfile({ ...profile, major: e.target.value })} placeholder="例如：计算机科学与技术" />
       </div>
       <button className="save-btn" onClick={handleSave} style={{ marginBottom: '8px' }}>
         保存信息
