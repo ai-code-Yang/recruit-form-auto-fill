@@ -4,6 +4,13 @@ import './App.css';
 // 强行用 as any 绕开 TypeScript 对 chrome 变量的报错
 const chromeApi = (window as any).chrome;
 
+interface Experience {
+  id: string;       // 唯一标识，用于删除和更新
+  title: string;    // 公司名/项目名
+  role: string;     // 岗位/角色
+  description: string; // 详细描述（你手写的草稿）
+}
+
 interface Profile {
   name: string;
   email: string;
@@ -23,13 +30,21 @@ function App() {
   const [aiResult, setAiResult] = useState('');     // AI生成的结果
   const [apiKey, setApiKey] = useState('');         // DeepSeek API Key
   const [loading, setLoading] = useState(false);    // 是否正在生成
+  // [新增] 项目经历列表
+  const [experiences, setExperiences] = useState<Experience[]>([
+  { id: '1', title: '', role: '', description: '' }
+  ]);
+
+  // [新增] 用于记录哪个经历正在被AI润色（防止同时点多个按钮冲突）
+  const [polishingId, setPolishingId] = useState<string | null>(null);
 
   // 页面打开时，从浏览器本地存储读取之前存的数据
   useEffect(() => {
     if (chromeApi && chromeApi.storage) {
-      chromeApi.storage.local.get(['profile', 'apiKey'], (result: any) => {
+      chromeApi.storage.local.get(['profile', 'apiKey','experiences'], (result: any) => {
         if (result.profile) setProfile(result.profile);
         if (result.apiKey) setApiKey(result.apiKey);
+        if (result.experiences) setExperiences(result.experiences);
       });
     }
   }, []);
@@ -37,7 +52,7 @@ function App() {
   // 保存个人信息
   const handleSave = () => {
     if (chromeApi && chromeApi.storage) {
-      chromeApi.storage.local.set({ profile }, () => {
+      chromeApi.storage.local.set({ profile,experiences }, () => {
         alert('✅ 个人信息已保存！');
       });
     }
@@ -181,6 +196,80 @@ function App() {
           </div>
         )}
       </div>
+
+      {/* [新增] 项目/工作经历区 */}
+    <div style={{ marginTop: '16px', borderTop: '1px solid #ccc', paddingTop: '12px' }}>
+      <label style={{ fontSize: '13px', fontWeight: 'bold' }}>📁 项目/工作经历：</label>
+      
+      {experiences.map((exp, index) => (
+        <div key={exp.id} style={{ marginTop: '8px', padding: '8px', border: '1px dashed #ddd', borderRadius: '4px', backgroundColor: '#fafafa' }}>
+          <div style={{ display: 'flex', gap: '4px', marginBottom: '4px' }}>
+            <input type="text" placeholder="公司/项目名" value={exp.title} 
+              onChange={(e) => {
+                const newList = [...experiences];
+                newList[index].title = e.target.value;
+                setExperiences(newList);
+              }} style={{ flex: 1, padding: '4px' }} />
+            <input type="text" placeholder="岗位/角色" value={exp.role}
+              onChange={(e) => {
+                const newList = [...experiences];
+                newList[index].role = e.target.value;
+                setExperiences(newList);
+              }} style={{ flex: 1, padding: '4px' }} />
+          </div>
+          
+          <textarea placeholder="描述（可以写草稿，然后点AI润色）" value={exp.description} rows={2}
+            onChange={(e) => {
+              const newList = [...experiences];
+              newList[index].description = e.target.value;
+              setExperiences(newList);
+            }} style={{ width: '100%', padding: '4px', boxSizing: 'border-box', marginBottom: '4px' }} />
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <button 
+              onClick={async () => {
+                if (!exp.description) return alert('请先写一点描述，AI才能润色哦');
+                setPolishingId(exp.id);
+                // 【AI润色请求】
+                chromeApi.runtime.sendMessage({ 
+                  type: 'POLISH_TEXT', 
+                  text: exp.description,
+                  apiKey: apiKey
+                }, (response: any) => {
+                  setPolishingId(null);
+                  if (response && response.success) {
+                    const newList = [...experiences];
+                    newList[index].description = response.content;
+                    setExperiences(newList);
+                  } else {
+                    alert('润色失败：' + (response ? response.error : '未知错误'));
+                  }
+                });
+              }}
+              disabled={polishingId === exp.id}
+              style={{ fontSize: '12px', padding: '2px 8px', cursor: 'pointer', backgroundColor: '#e9ecef', border: 'none', borderRadius: '4px' }}
+            >
+              {polishingId === exp.id ? '润色中...' : '✨ AI润色'}
+            </button>
+            
+            {experiences.length > 1 && (
+              <button onClick={() => {
+                setExperiences(experiences.filter(e => e.id !== exp.id));
+              }} style={{ fontSize: '12px', padding: '2px 8px', color: 'red', background: 'none', border: 'none', cursor: 'pointer' }}>
+                删除
+              </button>
+            )}
+          </div>
+        </div>
+      ))}
+      
+      <button 
+        onClick={() => setExperiences([...experiences, { id: Date.now().toString(), title: '', role: '', description: '' }])}
+        style={{ width: '100%', padding: '6px', marginTop: '8px', fontSize: '12px', cursor: 'pointer', backgroundColor: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px' }}
+      >
+        + 添加一段经历
+      </button>
+    </div>
 
       {/* --- API Key 设置区 --- */}
       <div style={{ marginTop: '12px', borderTop: '1px dashed #eee', paddingTop: '8px' }}>

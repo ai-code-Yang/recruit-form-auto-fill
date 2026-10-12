@@ -68,6 +68,36 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     return true; // 保持消息通道开启，等待异步请求返回
   }
+
+    // [新增] AI 润色经历
+    if (request.type === 'POLISH_TEXT') {
+    const { text, apiKey } = request;
+    if (!apiKey) return sendResponse({ success: false, error: '请先保存 API Key' });
+
+    const prompt = `请作为资深HR和面试官，帮我润色以下项目/工作经历，使其更专业、更符合STAR法则（情境、任务、行动、结果），并用数据量化结果。字数控制在200字以内。\n\n原草稿：${text}`;
+
+    fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({
+        model: "deepseek-chat",
+        messages: [{ role: "user", content: prompt }],
+        stream: false
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.choices && data.choices.length > 0) {
+        sendResponse({ success: true, content: data.choices[0].message.content });
+        } else {
+        sendResponse({ success: false, error: 'AI 返回异常' });
+        }
+    })
+    .catch(err => sendResponse({ success: false, error: err.message }));
+    
+    return true;
+    }
+
   // [新增] 处理复杂字段的大模型兜底
     if (request.type === 'LLM_FALLBACK') {
       const fields = request.fields;
