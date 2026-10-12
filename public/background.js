@@ -3,23 +3,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // 如果收到 AI 生成指令
   if (request.type === 'LLM_FALLBACK') {
   const fields = request.fields;
-
-  // 取出用户的简历信息和 API Key
+  
+  // 取出用户的简历信息（从 storage 拿，这里简化写死一个示例，实际要存）
   chrome.storage.local.get(['profile', 'apiKey'], (result) => {
     const profile = result.profile || {};
     const apiKey = result.apiKey || '';
     if (!apiKey) return sendResponse({ success: false, error: '无 API Key' });
 
-    // 构造给 AI 的提示词（注意：json_object 模式要求顶层必须是对象，所以包一层 answers）
-    const prompt = `以下是一些未匹配的网页表单字段，请根据上下文和简历信息进行填充。
-简历信息：${JSON.stringify(profile)}
-表单字段：${JSON.stringify(fields)}
-
-规则：
-1. 只填充你非常确定、且简历里有直接对应信息的字段；没有把握的绝对不要猜。
-2. 不确定、简历里没有对应信息、或属于日期/时间/上传/附件类的字段，直接不要出现在 answers 里。
-3. 有把握可以智能推断（例如：有邮箱可推算QQ号）。
-请返回 JSON，格式如 {"answers": [{"id": "字段id", "value": "要填入的值"}]}，只返回 JSON，不要其他任何文字。answers 可以为空数组。`;
+    // 构造给 AI 的提示词
+    const prompt = `以下是一些未匹配的网页表单字段，请根据上下文判断它们应该填入下面简历中的哪个信息。简历信息：${JSON.stringify(profile)}。\n表单字段列表：${JSON.stringify(fields)}\n请返回一个JSON数组，格式如 [{"id": "字段id", "value": "要填入的值"}]，只返回JSON，不要其他文字。`;
 
     fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
@@ -33,11 +25,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     .then(res => res.json())
     .then(data => {
       try {
-        const content = data.choices[0].message.content;
-        const jsonStr = content.replace(/```json/g, '').replace(/```/g, '').trim();
-        const parsed = JSON.parse(jsonStr);
-        // 兼容 {"answers": [...]} 和裸数组两种返回
-        sendResponse({ success: true, answers: parsed.answers || parsed });
+        const parsed = JSON.parse(data.choices[0].message.content);
+        sendResponse({ success: true, answers: parsed });
       } catch (e) {
         sendResponse({ success: false, error: 'AI 返回格式错误' });
       }
@@ -107,5 +96,54 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     .catch(err => sendResponse({ success: false, error: err.message }));
     
     return true;
+    }
+
+  // [新增] 处理复杂字段的大模型兜底
+    if (request.type === 'LLM_FALLBACK') {
+      const fields = request.fields;
+      console.log('后台收到大模型兜底请求:', fields);
+
+      // 从存储里取出 API Key 和个人信息
+      // [修改] 读取经历，让 AI 拥有完整上下文
+        chrome.storage.local.get(['profile', 'experiences', 'apiKey'], (result) => {
+        const profile = result.profile || {};
+        const experiences = result.experiences || [];
+        const apiKey = result.apiKey || '';
+        
+        // 把 profile 和 experiences 合并发给 AI
+        const prompt = `以下是一些未匹配的网页表单字段，请根据上下文判断它们应该填入下面简历中的哪个信息。
+        简历基础信息：${JSON.stringify(profile)}
+        项目/工作经历列表：${JSON.stringify(experiences)}
+        表单字段列表：${JSON.stringify(fields)}
+        
+        注意：如果是填写项目经历相关的字段（如公司名、职位、描述），请从 experiences 列表中智能提取。不要直接输出对象，把内容拼成字符串填入。
+        请返回 JSON 数组，格式如 [{"id": "字段id", "value": "要填入的值"}]，只返回这个 JSON，绝对不要任何解释文字。`;
+
+        fetch('https://api.deepseek.com/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+          body: JSON.stringify({
+            model: "deepseek-chat",
+            messages: [{ role: "user", content: prompt }],
+            response_format: { type: 'json_object' } // 强制 AI 返回 JSON 格式
+          })
+        })
+        .then(res => res.json())
+        .then(data => {
+          try {
+            const content = data.choices[0].message.content;
+            // 有些模型返回的 JSON 会被包在 markdown 代码块里，这里做个兼容
+            const jsonStr = content.replace(/```json/g, '').replace(/```/g, '').trim();
+            const parsed = JSON.parse(jsonStr);
+            sendResponse({ success: true, answers: parsed });
+          } catch (e) {
+            console.error('解析 AI 返回失败:', e);
+            sendResponse({ success: false, error: 'AI 返回格式无法解析' });
+          }
+        })
+        .catch(err => sendResponse({ success: false, error: err.message }));
+      });
+      
+      return true; // 保持通信通道打开
     }
 });

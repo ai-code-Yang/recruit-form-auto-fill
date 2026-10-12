@@ -62,8 +62,8 @@ flowchart TB
 ### 从源码构建（推荐）
 
 ```bash
-git clone https://github.com/ai-code-Yang/project.git
-cd CampusApply-Agent
+git clone https://github.com/ai-code-Yang/recruit-form-auto-fill.git
+cd recruit-form-auto-fill
 npm install
 npm run build        # 产物输出到 dist/
 ```
