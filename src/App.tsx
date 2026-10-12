@@ -90,9 +90,13 @@ function App() {
     });
   };
 
-  // 一键填充基础信息
+  // 一键填充基础信息 + 项目经历
   const handleFillForm = () => {
-    sendToActiveTab({ type: 'FILL_FORM', data: profile });
+    // 过滤掉完全空白的经历，避免发送无用数据
+    const validExperiences = experiences.filter(
+      e => (e.title || '').trim() || (e.role || '').trim() || (e.description || '').trim()
+    );
+    sendToActiveTab({ type: 'FILL_FORM', data: profile, experiences: validExperiences });
   };
 
   // AI 写小作文

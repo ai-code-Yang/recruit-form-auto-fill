@@ -12,6 +12,18 @@ dist
 dist-ssr
 *.local
 
+# Environment / secrets（密钥与环境变量，绝不提交）
+.env
+.env.*
+*.key
+
+# Temporary files（临时/备份文件）
+*.tmp
+*.bak
+*.swp
+~$*
+Thumbs.db
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
